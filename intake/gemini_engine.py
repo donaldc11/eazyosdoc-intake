@@ -17,7 +17,7 @@ from typing import Any, Dict, Optional
 
 from pydantic import BaseModel
 
-DEFAULT_MODEL = "gemini-2.5-flash"
+DEFAULT_MODEL = "gemini-3.8-flash"
 
 DOCUMENT_TYPES = ["rate_confirmation", "bol", "pod", "invoice", "solicitation", "unknown"]
 
