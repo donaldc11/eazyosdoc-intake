@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Tuple
 
-from . import classify, extract
+from . import classify, extract, naics
 from . import fields as fx
 
 EXPECTED_FIELDS = {
@@ -43,6 +43,8 @@ CSV_FIELDNAMES = [
     "solicitation_number",
     "due_date",
     "naics_code",
+    "naics_lookup_code",
+    "naics_lookup_confidence",
     "buyer_contact",
     "missing_fields",
     "review_status",
@@ -82,6 +84,10 @@ def build_record(path: Path, doc_id: str) -> Tuple[dict, str]:
     record_fields["due_date"] = fx.extract_due_date(raw_text)
     record_fields["naics_code"] = fx.extract_naics_code(raw_text)
     record_fields["buyer_contact"] = fx.extract_buyer_contact(raw_text)
+
+    naics_lookup_code, naics_lookup_confidence = naics.lookup_naics(raw_text)
+    record_fields["naics_lookup_code"] = naics_lookup_code
+    record_fields["naics_lookup_confidence"] = naics_lookup_confidence
 
     expected = EXPECTED_FIELDS.get(doc_type, [])
     missing = [key for key in expected if record_fields.get(key) is None]

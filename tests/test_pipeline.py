@@ -89,3 +89,37 @@ def test_txt_files_are_processed(tmp_path):
     assert len(new_rows) == 1
     assert new_rows[0]["document_type"] == "invoice"
     assert new_rows[0]["amount"] == "75.00"
+
+
+def test_naics_lookup_is_tagged_on_solicitation_docs(tmp_path):
+    samples = tmp_path / "samples"
+    out = tmp_path / "out"
+    samples.mkdir()
+    (samples / "rfq.txt").write_text(
+        "REQUEST FOR QUOTE (RFQ)\n"
+        "The Sample Agency invites you to submit a quote for daily mail courier service.\n",
+        encoding="utf-8",
+    )
+
+    new_rows, _ = run(samples, out)
+    row = new_rows[0]
+    assert row["document_type"] == "solicitation"
+    assert row["naics_lookup_code"] == "492110"
+    assert float(row["naics_lookup_confidence"]) > 0
+
+
+def test_naics_lookup_is_empty_when_nothing_matches(tmp_path):
+    samples = tmp_path / "samples"
+    out = tmp_path / "out"
+    samples.mkdir()
+    (samples / "rfq.txt").write_text(
+        "REQUEST FOR QUOTE (RFQ)\n"
+        "The Sample Agency invites you to submit a quote for office plant watering services.\n",
+        encoding="utf-8",
+    )
+
+    new_rows, _ = run(samples, out)
+    row = new_rows[0]
+    assert row["document_type"] == "solicitation"
+    assert row["naics_lookup_code"] in (None, "")
+    assert float(row["naics_lookup_confidence"]) == 0.0
