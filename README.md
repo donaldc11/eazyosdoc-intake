@@ -1,5 +1,7 @@
 # EazyOS Document Intake — local prototype
 
+[![Tests](https://github.com/donaldc11/eazyosdoc-intake/actions/workflows/tests.yml/badge.svg)](https://github.com/donaldc11/eazyosdoc-intake/actions/workflows/tests.yml)
+
 Reads rate confirmations, BOLs, PODs, and invoices from a folder of PDFs/images,
 classifies each one, extracts what fields it can find, and writes:
 
