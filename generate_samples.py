@@ -1,0 +1,114 @@
+#!/usr/bin/env python3
+"""Generates synthetic sample documents (rate confirmation, BOL, POD, invoice,
+an unrelated memo, and one scanned-style image) into ./samples so the intake
+pipeline has something realistic to run against. These are fabricated
+documents for prototype testing only — not real shipments or invoices.
+"""
+
+from pathlib import Path
+
+from PIL import Image, ImageDraw
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+
+SAMPLES_DIR = Path(__file__).parent / "samples"
+
+DOCS = {
+    "rate_confirmation_1001.pdf": [
+        "ACME FREIGHT BROKERAGE",
+        "RATE CONFIRMATION",
+        "Confirmation Number: RC-88213",
+        "Load #: LD-55210",
+        "Shipper: Sunrise Produce Co, Fresno CA",
+        "Consignee: Metro Grocers Distribution, Dallas TX",
+        "Pickup Date: 10/02/2026",
+        "Delivery Date: 10/04/2026",
+        "Agreed Rate: $2,450.00",
+        "Dispatcher: J. Alvarez",
+    ],
+    "bol_2002.pdf": [
+        "STRAIGHT BILL OF LADING",
+        "BOL #: BOL-77410",
+        "Shipper: Coastal Steel Supply, Long Beach CA",
+        "Consignee: Highline Construction, Phoenix AZ",
+        "Pickup Date: 09/28/2026",
+        "Delivery Date: 09/30/2026",
+        "Freight Charges: Prepaid",
+        "Carrier Signature: on file",
+    ],
+    "pod_3003.pdf": [
+        "PROOF OF DELIVERY",
+        "POD #: POD-91827",
+        "Load #: LD-55210",
+        "Consignee: Metro Grocers Distribution, Dallas TX",
+        "Delivery Date: 10/04/2026",
+        "Received in good condition.",
+        "Signature on file.",
+    ],
+    "invoice_4004.pdf": [
+        "EAZY EXPRESS LOGISTICS LLC",
+        "INVOICE",
+        "Invoice Number: INV-10045",
+        "Invoice Date: 10/05/2026",
+        "Bill To: Metro Grocers Distribution",
+        "Load #: LD-55210",
+        "Amount Due: $2,450.00",
+        "Payment Terms: Net 30",
+        "Remit To: Eazy Express Logistics LLC, PO Box 100, Miami FL",
+    ],
+    # Deliberately sparse/ambiguous invoice to exercise the low-confidence /
+    # missing-fields review path.
+    "invoice_partial_4005.pdf": [
+        "INVOICE",
+        "Invoice Number: INV-10099",
+    ],
+    "misc_memo_5005.pdf": [
+        "INTERNAL MEMO",
+        "To: All Dispatch Staff",
+        "Re: Office closed for holiday on 11/27/2026",
+        "Please plan load coverage accordingly.",
+    ],
+}
+
+
+def make_pdf(path: Path, lines):
+    c = canvas.Canvas(str(path), pagesize=letter)
+    _, height = letter
+    y = height - 72
+    for line in lines:
+        c.drawString(72, y, line)
+        y -= 18
+    c.save()
+
+
+def make_scanned_pod_image(path: Path):
+    """A rendered (not photographed) image to exercise the image-input path.
+    OCR requires the tesseract binary; see README for the review-flagging
+    behavior when it isn't installed."""
+    img = Image.new("RGB", (900, 400), "white")
+    draw = ImageDraw.Draw(img)
+    lines = [
+        "PROOF OF DELIVERY (SCANNED)",
+        "POD #: POD-91900",
+        "Load #: LD-66330",
+        "Consignee: Gulfstream Retail Center, Tampa FL",
+        "Delivery Date: 10/06/2026",
+        "Received in good condition. Driver signature on file.",
+    ]
+    y = 30
+    for line in lines:
+        draw.text((30, y), line, fill="black")
+        y += 40
+    img.save(path)
+
+
+def main():
+    SAMPLES_DIR.mkdir(exist_ok=True)
+    for filename, lines in DOCS.items():
+        make_pdf(SAMPLES_DIR / filename, lines)
+    make_scanned_pod_image(SAMPLES_DIR / "scanned_pod_6006.png")
+    print(f"Generated {len(DOCS) + 1} synthetic sample documents in {SAMPLES_DIR}")
+
+
+if __name__ == "__main__":
+    main()

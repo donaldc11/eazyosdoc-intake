@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Real and generated documents are local-only; only code/tests are pushed.
+samples/
+out/
