@@ -91,6 +91,68 @@ def test_txt_files_are_processed(tmp_path):
     assert new_rows[0]["amount"] == "75.00"
 
 
+def test_bol_with_all_fields_is_ok(tmp_path):
+    samples = tmp_path / "samples"
+    out = tmp_path / "out"
+    samples.mkdir()
+    _make_pdf(samples / "bol_full.pdf", [
+        "STRAIGHT BILL OF LADING",
+        "BOL #: BOL-77410",
+        "Shipper: Coastal Steel Supply",
+        "Consignee: Highline Construction",
+        "PO Number: PO-44210",
+        "Piece Count: 24",
+        "Weight: 42,500 lbs",
+    ])
+
+    new_rows, _ = run(samples, out)
+    row = new_rows[0]
+    assert row["document_type"] == "bol"
+    assert row["load_reference_number"] == "BOL-77410"
+    assert row["piece_count"] == "24"
+    assert row["weight"] == "42,500 lbs"
+    assert row["po_number"] == "PO-44210"
+    assert row["review_status"] == "ok"
+
+
+def test_bol_missing_po_number_is_still_ok(tmp_path):
+    samples = tmp_path / "samples"
+    out = tmp_path / "out"
+    samples.mkdir()
+    _make_pdf(samples / "bol_no_po.pdf", [
+        "STRAIGHT BILL OF LADING",
+        "BOL #: BOL-77500",
+        "Shipper: Riverside Lumber Co",
+        "Consignee: Delta Builders Supply",
+        "Piece Count: 8",
+        "Weight: 6,100 lbs",
+    ])
+
+    new_rows, _ = run(samples, out)
+    row = new_rows[0]
+    assert row["document_type"] == "bol"
+    assert row["po_number"] in (None, "")
+    assert "po_number" not in row["missing_fields"].split(";")
+    assert row["review_status"] == "ok"
+
+
+def test_bol_missing_required_field_needs_review(tmp_path):
+    samples = tmp_path / "samples"
+    out = tmp_path / "out"
+    samples.mkdir()
+    _make_pdf(samples / "bol_sparse.pdf", [
+        "STRAIGHT BILL OF LADING",
+        "BOL #: BOL-77600",
+    ])
+
+    new_rows, _ = run(samples, out)
+    row = new_rows[0]
+    assert row["document_type"] == "bol"
+    assert row["review_status"] == "needs_review"
+    assert "piece_count" in row["missing_fields"].split(";")
+    assert "weight" in row["missing_fields"].split(";")
+
+
 def test_naics_lookup_is_tagged_on_solicitation_docs(tmp_path):
     samples = tmp_path / "samples"
     out = tmp_path / "out"

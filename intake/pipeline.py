@@ -15,7 +15,9 @@ from . import fields as fx
 
 EXPECTED_FIELDS = {
     "rate_confirmation": ["load_reference_number", "shipper", "consignee", "pickup_date", "delivery_date", "amount", "currency"],
-    "bol": ["load_reference_number", "shipper", "consignee", "pickup_date", "delivery_date"],
+    # po_number is deliberately excluded: not every BOL references a
+    # customer PO, so its absence shouldn't force a review.
+    "bol": ["load_reference_number", "shipper", "consignee", "piece_count", "weight"],
     "pod": ["load_reference_number", "consignee", "delivery_date"],
     "invoice": ["load_reference_number", "amount", "currency", "shipper"],
     # naics_code is deliberately excluded: the spec calls it out as "if
@@ -39,6 +41,9 @@ CSV_FIELDNAMES = [
     "delivery_date",
     "amount",
     "currency",
+    "piece_count",
+    "weight",
+    "po_number",
     "issuing_agency",
     "solicitation_number",
     "due_date",
@@ -79,6 +84,9 @@ def build_record(path: Path, doc_id: str) -> Tuple[dict, str]:
     amount, currency = fx.extract_amount_currency(raw_text)
     record_fields["amount"] = amount
     record_fields["currency"] = currency
+    record_fields["piece_count"] = fx.extract_piece_count(raw_text)
+    record_fields["weight"] = fx.extract_weight(raw_text)
+    record_fields["po_number"] = fx.extract_po_number(raw_text)
     record_fields["issuing_agency"] = fx.extract_issuing_agency(raw_text)
     record_fields["solicitation_number"] = fx.extract_solicitation_number(raw_text)
     record_fields["due_date"] = fx.extract_due_date(raw_text)

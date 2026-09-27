@@ -11,10 +11,11 @@ def _search(pattern: str, text: str) -> Optional[str]:
 
 
 def extract_load_reference(text: str) -> Optional[str]:
-    # "invoice" is included as an alias: non-freight invoices (e.g. SaaS
-    # subscriptions) have no load number, so their invoice number is the
-    # closest thing to a document reference number.
-    return _search(r"(?:load|ref(?:erence)?|order|invoice)\s*(?:#|no\.?|number)?\s*[:#]\s*([A-Za-z0-9\-]{3,})", text)
+    # "invoice"/"bol" are included as aliases: non-freight invoices (e.g. SaaS
+    # subscriptions) have no load number, and bills of lading are usually
+    # labeled "BOL #" rather than "Load #" — both are the closest thing to a
+    # document reference number for their respective document types.
+    return _search(r"(?:load|ref(?:erence)?|order|invoice|bol)\s*(?:#|no\.?|number)?\s*[:#]\s*([A-Za-z0-9\-]{3,})", text)
 
 
 def extract_shipper(text: str) -> Optional[str]:
@@ -63,6 +64,21 @@ def extract_amount_currency(text: str) -> Tuple[Optional[str], Optional[str]]:
         return match.group(2).replace(",", ""), match.group(1).upper()
 
     return None, None
+
+
+def extract_piece_count(text: str) -> Optional[str]:
+    return _search(r"(?:piece count|total pieces|# of pieces|pieces|pcs)\s*[:#]\s*(\d+)", text)
+
+
+def extract_weight(text: str) -> Optional[str]:
+    return _search(r"(?:gross weight|total weight|weight)\s*[:#]\s*([\d,]+(?:\.\d+)?\s*(?:lbs?|kgs?|pounds)?)", text)
+
+
+def extract_po_number(text: str) -> Optional[str]:
+    value = _search(r"\bP\.?O\.?\s*(?:Number|No\.?|#)?\s*[:#]\s*([A-Za-z0-9\-]{2,})", text)
+    if value:
+        return value
+    return _search(r"Purchase Order\s*(?:Number|No\.?|#)?\s*[:#]\s*([A-Za-z0-9\-]{2,})", text)
 
 
 def extract_issuing_agency(text: str) -> Optional[str]:

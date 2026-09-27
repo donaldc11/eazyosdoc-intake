@@ -33,8 +33,24 @@ DOCS = {
         "Consignee: Highline Construction, Phoenix AZ",
         "Pickup Date: 09/28/2026",
         "Delivery Date: 09/30/2026",
+        "PO Number: PO-44210",
+        "Piece Count: 24",
+        "Weight: 42,500 lbs",
         "Freight Charges: Prepaid",
         "Carrier Signature: on file",
+    ],
+    # Deliberately missing PO number to exercise the "PO is optional" path —
+    # a BOL with no customer PO reference should still come back "ok".
+    "bol_no_po_2003.pdf": [
+        "STRAIGHT BILL OF LADING",
+        "BOL #: BOL-77500",
+        "Shipper: Riverside Lumber Co, Sacramento CA",
+        "Consignee: Delta Builders Supply, Stockton CA",
+        "Pickup Date: 10/01/2026",
+        "Delivery Date: 10/02/2026",
+        "Piece Count: 8",
+        "Weight: 6,100 lbs",
+        "Freight Charges: Collect",
     ],
     "pod_3003.pdf": [
         "PROOF OF DELIVERY",

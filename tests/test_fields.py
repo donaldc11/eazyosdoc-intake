@@ -92,6 +92,41 @@ def test_solicitation_fields_sbq_style():
     assert fx.extract_buyer_contact(text) == "Jason.Bartz@edd.ca.gov"
 
 
+def test_bol_fields():
+    text = (
+        "STRAIGHT BILL OF LADING\n"
+        "BOL #: BOL-77410\n"
+        "Shipper: Coastal Steel Supply, Long Beach CA\n"
+        "Consignee: Highline Construction, Phoenix AZ\n"
+        "PO Number: PO-44210\n"
+        "Piece Count: 24\n"
+        "Weight: 42,500 lbs\n"
+    )
+    assert fx.extract_load_reference(text) == "BOL-77410"
+    assert fx.extract_shipper(text) == "Coastal Steel Supply, Long Beach CA"
+    assert fx.extract_consignee(text) == "Highline Construction, Phoenix AZ"
+    assert fx.extract_piece_count(text) == "24"
+    assert fx.extract_weight(text) == "42,500 lbs"
+    assert fx.extract_po_number(text) == "PO-44210"
+
+
+def test_bol_po_number_is_optional_and_never_invented():
+    text = (
+        "STRAIGHT BILL OF LADING\n"
+        "BOL #: BOL-77500\n"
+        "Piece Count: 8\n"
+        "Weight: 6,100 lbs\n"
+    )
+    assert fx.extract_po_number(text) is None
+    assert fx.extract_piece_count(text) == "8"
+    assert fx.extract_weight(text) == "6,100 lbs"
+
+
+def test_bol_purchase_order_alias():
+    text = "Purchase Order Number: PO-99871\n"
+    assert fx.extract_po_number(text) == "PO-99871"
+
+
 def test_solicitation_fields_letter_style_due_date_and_contact():
     text = (
         "DEPARTMENT OF FORESTRY AND FIRE PROTECTION \n"
