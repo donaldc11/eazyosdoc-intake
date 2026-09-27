@@ -127,6 +127,42 @@ Notes:
   Gemini-engine tests in `tests/test_pipeline.py` inject a stub client, so
   `pytest` (and CI) never need `GEMINI_API_KEY`.
 
+## HTTP API / Cloud Run deployment
+
+`main.py` wraps the same pipeline in a minimal, stateless FastAPI service —
+one request in, one JSON record out, no ledger, no persisted files:
+
+```bash
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8080
+curl -F "file=@samples/rate_confirmation_1001.pdf" http://localhost:8080/process
+curl -F "file=@samples/rate_confirmation_1001.pdf" "http://localhost:8080/process?engine=gemini"   # requires GEMINI_API_KEY
+```
+
+Deployed to Cloud Run from the `Dockerfile` in this repo:
+
+```bash
+gcloud run deploy eazyos-doc-intake \
+  --source . \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --set-secrets=GEMINI_API_KEY=gemini-api-key:latest
+```
+
+The key is never baked into the image or passed as a plain `--set-env-vars`
+value (which would store it in the service's visible revision config) — it's
+stored in Secret Manager and mounted as an env var at runtime via
+`--set-secrets`. Rotate it with:
+
+```bash
+printf '%s' 'new-key-value' | gcloud secrets versions add gemini-api-key --data-file=-
+```
+
+The deployment is public (`--allow-unauthenticated`) for demo purposes, which
+means anyone with the URL can trigger `?engine=gemini` calls against your
+Gemini quota — fine for a judged demo, but add auth before leaving it up
+long-term.
+
 ## Image / OCR support
 
 Image files (`.png`, `.jpg`, etc.) go through OCR via `pytesseract`, which

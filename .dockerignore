@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+samples/
+out/
+tests/
+.env
+.env.*
+.git/
+google-cloud-sdk/
