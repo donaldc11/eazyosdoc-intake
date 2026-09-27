@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Tuple
 
-from . import classify, extract, naics
+from . import classify, extract, gemini_engine, naics
 from . import fields as fx
 
 EXPECTED_FIELDS = {
@@ -113,9 +113,17 @@ def build_record(path: Path, doc_id: str) -> Tuple[dict, str]:
     record_fields["naics_code"] = fx.extract_naics_code(raw_text)
     record_fields["buyer_contact"] = fx.extract_buyer_contact(raw_text)
 
+    record = _finalize_record(doc_id, path, doc_type, confidence, scores, record_fields, note, raw_text)
+    return record, raw_text
+
+
+def _finalize_record(doc_id: str, path: Path, doc_type: str, confidence: float, scores: dict,
+                      record_fields: dict, note: str, raw_text: str) -> dict:
+    """Shared by both engines: applies the same missing-field/review-status
+    logic and assembles the same record shape regardless of which engine
+    produced doc_type/confidence/record_fields."""
     naics_lookup_code, naics_lookup_confidence = naics.lookup_naics(raw_text)
-    record_fields["naics_lookup_code"] = naics_lookup_code
-    record_fields["naics_lookup_confidence"] = naics_lookup_confidence
+    record_fields = {**record_fields, "naics_lookup_code": naics_lookup_code, "naics_lookup_confidence": naics_lookup_confidence}
 
     expected = EXPECTED_FIELDS.get(doc_type, [])
     missing = [key for key in expected if record_fields.get(key) is None]
@@ -127,7 +135,7 @@ def build_record(path: Path, doc_id: str) -> Tuple[dict, str]:
         or bool(note)
     )
 
-    record = {
+    return {
         "document_id": doc_id,
         "source_path": str(path.resolve()),
         "document_type": doc_type,
@@ -140,10 +148,35 @@ def build_record(path: Path, doc_id: str) -> Tuple[dict, str]:
         "processed_at": datetime.now(timezone.utc).isoformat(),
         "raw_text_path": None,
     }
+
+
+def build_record_with_gemini(path: Path, doc_id: str, client=None) -> Tuple[dict, str]:
+    """Same output shape as build_record, sourced from Gemini multimodal
+    instead of the regex engine. raw_text is still extracted locally (for
+    the audit trail and as input to the local, API-free NAICS lookup) —
+    Gemini reads the document's raw bytes directly for classification and
+    field extraction."""
+    raw_text, note = extract.extract_text(path)
+
+    try:
+        result = gemini_engine.classify_and_extract(path, client=client)
+    except ValueError as exc:
+        doc_type, confidence, scores = "unknown", 0.0, {"engine": "gemini"}
+        record_fields = {key: None for key in gemini_engine.FIELD_NAMES}
+        note = note or str(exc)
+        record = _finalize_record(doc_id, path, doc_type, confidence, scores, record_fields, note, raw_text)
+        return record, raw_text
+
+    doc_type = result["document_type"]
+    confidence = result["confidence"]
+    scores = {"engine": "gemini"}
+    record_fields = {key: result.get(key) for key in gemini_engine.FIELD_NAMES}
+
+    record = _finalize_record(doc_id, path, doc_type, confidence, scores, record_fields, note, raw_text)
     return record, raw_text
 
 
-def run(samples_dir: Path, out_dir: Path) -> Tuple[List[dict], int]:
+def run(samples_dir: Path, out_dir: Path, engine: str = "regex", gemini_client=None) -> Tuple[List[dict], int]:
     records_dir = out_dir / "records"
     raw_dir = out_dir / "raw_text"
     records_dir.mkdir(parents=True, exist_ok=True)
@@ -166,7 +199,10 @@ def run(samples_dir: Path, out_dir: Path) -> Tuple[List[dict], int]:
             print(f"skip (already processed, hash matches): {path.name}")
             continue
 
-        record, raw_text = build_record(path, doc_id)
+        if engine == "gemini":
+            record, raw_text = build_record_with_gemini(path, doc_id, client=gemini_client)
+        else:
+            record, raw_text = build_record(path, doc_id)
 
         raw_text_file = raw_dir / f"{doc_id}.txt"
         raw_text_file.write_text(raw_text, encoding="utf-8")

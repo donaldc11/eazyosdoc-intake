@@ -96,6 +96,37 @@ For any row in `ledger.csv` (or file in `out/records/`):
 4. If `review_status` is `needs_review`, `missing_fields` tells you exactly
    what to fill in or verify by hand.
 
+## Gemini engine (optional)
+
+By default the pipeline uses the local, regex-based engine (`intake/fields.py`
++ `intake/classify.py`) — no API calls, no key required. There's also an
+optional Gemini multimodal engine (`intake/gemini_engine.py`) that sends a
+document's raw bytes directly to Gemini and asks it to classify the document
+and extract the exact same field set, producing the identical record shape
+(same JSON schema, same CSV columns, same missing-field/review-status rules).
+The two engines are interchangeable at the record level — nothing downstream
+needs to know which one produced a given record.
+
+```bash
+export GEMINI_API_KEY=your-key-here   # never hardcoded, never committed
+python run.py --samples ./samples --out ./out --engine gemini
+```
+
+Notes:
+- The API key is read from the `GEMINI_API_KEY` environment variable only.
+  It is never read from a file this repo commits, and `.env` is gitignored
+  if you choose to keep it there locally.
+- `raw_text_path` is still populated locally (via `pypdf`/OCR) even when
+  using the Gemini engine, both for the audit trail and because the local,
+  API-free NAICS lookup (`intake/naics.py`) runs against that same raw text
+  regardless of which engine classified the document.
+- If Gemini's response can't be parsed as valid JSON, the document is
+  marked `document_type: unknown`, `review_status: needs_review`, with an
+  `extraction_note` explaining the failure — never a guessed fallback.
+- Tests never call the real API: `tests/test_gemini_engine.py` and the
+  Gemini-engine tests in `tests/test_pipeline.py` inject a stub client, so
+  `pytest` (and CI) never need `GEMINI_API_KEY`.
+
 ## Image / OCR support
 
 Image files (`.png`, `.jpg`, etc.) go through OCR via `pytesseract`, which

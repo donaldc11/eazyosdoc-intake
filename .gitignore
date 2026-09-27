@@ -6,3 +6,6 @@ __pycache__/
 # Real and generated documents are local-only; only code/tests are pushed.
 samples/
 out/
+
+# Never commit API keys.
+.env

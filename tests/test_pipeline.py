@@ -4,6 +4,7 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
 from intake.pipeline import run
+from tests.test_gemini_engine import RATE_CON_PAYLOAD, FakeClient
 
 
 def _make_pdf(path, lines):
@@ -318,3 +319,95 @@ def test_naics_lookup_is_empty_when_nothing_matches(tmp_path):
     assert row["document_type"] == "solicitation"
     assert row["naics_lookup_code"] in (None, "")
     assert float(row["naics_lookup_confidence"]) == 0.0
+
+
+def test_gemini_engine_produces_same_record_shape_as_regex(tmp_path):
+    samples = tmp_path / "samples"
+    out_regex = tmp_path / "out_regex"
+    out_gemini = tmp_path / "out_gemini"
+    samples.mkdir()
+    _make_pdf(samples / "rc.pdf", [
+        "RATE CONFIRMATION",
+        "Load #: RC-1001",
+        "Shipper: Sunrise Produce Co",
+        "Pickup Location: Fresno, CA",
+        "Pickup Date: 10/02/2026",
+        "Delivery Location: Dallas, TX",
+        "Delivery Date: 10/04/2026",
+        "Equipment Type: 53' Dry Van",
+        "Linehaul Rate: $2,450.00",
+        "Fuel Surcharge: $180.00",
+    ])
+
+    regex_rows, _ = run(samples, out_regex, engine="regex")
+    gemini_rows, _ = run(samples, out_gemini, engine="gemini", gemini_client=FakeClient(RATE_CON_PAYLOAD))
+
+    # Same schema: identical set of CSV columns from both engines.
+    assert set(regex_rows[0].keys()) == set(gemini_rows[0].keys())
+
+    gemini_row = gemini_rows[0]
+    assert gemini_row["document_type"] == "rate_confirmation"
+    assert gemini_row["load_reference_number"] == "RC-1001"
+    assert gemini_row["pickup_location"] == "Fresno, CA"
+    assert gemini_row["equipment_type"] == "53' Dry Van"
+    assert gemini_row["review_status"] == "ok"
+    # NAICS lookup still runs locally against the extracted raw text,
+    # independent of which engine classified the document.
+    assert "naics_lookup_code" in gemini_row
+
+
+def test_gemini_engine_missing_required_field_needs_review(tmp_path):
+    samples = tmp_path / "samples"
+    out = tmp_path / "out"
+    samples.mkdir()
+    (samples / "sparse.txt").write_text("RATE CONFIRMATION\n", encoding="utf-8")
+
+    sparse_payload = {
+        "document_type": "rate_confirmation",
+        "confidence": 0.9,
+        "load_reference_number": "RC-2",
+    }
+    new_rows, _ = run(samples, out, engine="gemini", gemini_client=FakeClient(sparse_payload))
+    row = new_rows[0]
+    assert row["document_type"] == "rate_confirmation"
+    assert row["review_status"] == "needs_review"
+    assert "pickup_location" in row["missing_fields"].split(";")
+
+
+def test_gemini_engine_parse_failure_falls_back_to_unknown_needs_review(tmp_path):
+    samples = tmp_path / "samples"
+    out = tmp_path / "out"
+    samples.mkdir()
+    (samples / "broken.txt").write_text("something", encoding="utf-8")
+
+    class BrokenModels:
+        def generate_content(self, model, contents, config):
+            class R:
+                parsed = None
+                text = "not json"
+            return R()
+
+    class BrokenClient:
+        models = BrokenModels()
+
+    new_rows, _ = run(samples, out, engine="gemini", gemini_client=BrokenClient())
+    row = new_rows[0]
+    assert row["document_type"] == "unknown"
+    assert row["review_status"] == "needs_review"
+    assert row["extraction_note"]
+
+
+def test_gemini_engine_dedup_still_works(tmp_path):
+    samples = tmp_path / "samples"
+    out = tmp_path / "out"
+    samples.mkdir()
+    (samples / "rc.txt").write_text("RATE CONFIRMATION\nLoad #: RC-1001\n", encoding="utf-8")
+
+    client = FakeClient(RATE_CON_PAYLOAD)
+    rows_1, skipped_1 = run(samples, out, engine="gemini", gemini_client=client)
+    rows_2, skipped_2 = run(samples, out, engine="gemini", gemini_client=client)
+
+    assert len(rows_1) == 1
+    assert skipped_1 == 0
+    assert len(rows_2) == 0
+    assert skipped_2 == 1
