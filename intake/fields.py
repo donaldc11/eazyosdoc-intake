@@ -11,11 +11,13 @@ def _search(pattern: str, text: str) -> Optional[str]:
 
 
 def extract_load_reference(text: str) -> Optional[str]:
-    # "invoice"/"bol" are included as aliases: non-freight invoices (e.g. SaaS
-    # subscriptions) have no load number, and bills of lading are usually
-    # labeled "BOL #" rather than "Load #" — both are the closest thing to a
-    # document reference number for their respective document types.
-    return _search(r"(?:load|ref(?:erence)?|order|invoice|bol)\s*(?:#|no\.?|number)?\s*[:#]\s*([A-Za-z0-9\-]{3,})", text)
+    # "invoice"/"bol"/"confirmation" are included as aliases: non-freight
+    # invoices (e.g. SaaS subscriptions) have no load number, bills of lading
+    # are usually labeled "BOL #" rather than "Load #", and some rate
+    # confirmations have no separate load number at all — just a
+    # "Confirmation Number". Each is the closest thing to a document
+    # reference number for its respective document type.
+    return _search(r"(?:load|ref(?:erence)?|order|invoice|bol|confirmation)\s*(?:#|no\.?|number)?\s*[:#]\s*([A-Za-z0-9\-]{3,})", text)
 
 
 def extract_shipper(text: str) -> Optional[str]:
@@ -112,6 +114,31 @@ def extract_exception_notes(text: str) -> Optional[str]:
             if stripped:
                 return stripped
     return None
+
+
+def extract_pickup_location(text: str) -> Optional[str]:
+    return _search(r"pickup\s*(?:location|city\s*/?\s*state|city)\s*[:\-]\s*([^\n]+)", text)
+
+
+def extract_delivery_location(text: str) -> Optional[str]:
+    return _search(r"delivery\s*(?:location|city\s*/?\s*state|city)\s*[:\-]\s*([^\n]+)", text)
+
+
+def extract_equipment_type(text: str) -> Optional[str]:
+    return _search(r"equipment\s*(?:type)?\s*[:\-]\s*([^\n]+)", text)
+
+
+ACCESSORIAL_KEYWORDS = [
+    "fuel surcharge", "fsc", "accessorial", "detention", "lumper", "layover", "tarp fee", "chassis fee",
+]
+
+
+def extract_accessorial_charges(text: str) -> Optional[str]:
+    # Returns every matching line verbatim, joined — a rate con can carry
+    # more than one accessorial charge (fuel surcharge + detention, etc).
+    # None when no such line appears (a clean linehaul-only rate con).
+    matches = [line.strip() for line in text.splitlines() if any(keyword in line.lower() for keyword in ACCESSORIAL_KEYWORDS) and line.strip()]
+    return "; ".join(matches) if matches else None
 
 
 def extract_issuing_agency(text: str) -> Optional[str]:

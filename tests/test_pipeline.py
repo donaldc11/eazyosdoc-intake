@@ -153,6 +153,77 @@ def test_bol_missing_required_field_needs_review(tmp_path):
     assert "weight" in row["missing_fields"].split(";")
 
 
+def test_rate_confirmation_full_fields_is_ok(tmp_path):
+    samples = tmp_path / "samples"
+    out = tmp_path / "out"
+    samples.mkdir()
+    _make_pdf(samples / "rc_full.pdf", [
+        "RATE CONFIRMATION",
+        "Confirmation Number: RC-88213",
+        "Load #: LD-55210",
+        "Shipper: Sunrise Produce Co",
+        "Pickup Location: Fresno, CA",
+        "Pickup Date: 10/02/2026",
+        "Delivery Location: Dallas, TX",
+        "Delivery Date: 10/04/2026",
+        "Equipment Type: 53' Dry Van",
+        "Linehaul Rate: $2,450.00",
+        "Fuel Surcharge: $180.00",
+    ])
+
+    new_rows, _ = run(samples, out)
+    row = new_rows[0]
+    assert row["document_type"] == "rate_confirmation"
+    assert row["pickup_location"] == "Fresno, CA"
+    assert row["delivery_location"] == "Dallas, TX"
+    assert row["equipment_type"] == "53' Dry Van"
+    assert row["accessorial_charges"] == "Fuel Surcharge: $180.00"
+    assert row["review_status"] == "ok"
+
+
+def test_rate_confirmation_without_accessorials_is_still_ok(tmp_path):
+    samples = tmp_path / "samples"
+    out = tmp_path / "out"
+    samples.mkdir()
+    _make_pdf(samples / "rc_no_accessorials.pdf", [
+        "RATE CONFIRMATION",
+        "Confirmation Number: RC-90042",
+        "Shipper: Golden Valley Produce",
+        "Pickup Location: Bakersfield, CA",
+        "Pickup Date: 10/10/2026",
+        "Delivery Location: Seattle, WA",
+        "Delivery Date: 10/13/2026",
+        "Equipment Type: Reefer",
+        "Linehaul Rate: $3,900.00",
+    ])
+
+    new_rows, _ = run(samples, out)
+    row = new_rows[0]
+    assert row["document_type"] == "rate_confirmation"
+    assert row["load_reference_number"] == "RC-90042"
+    assert row["accessorial_charges"] in (None, "")
+    assert "accessorial_charges" not in row["missing_fields"].split(";")
+    assert row["review_status"] == "ok"
+
+
+def test_rate_confirmation_missing_required_field_needs_review(tmp_path):
+    samples = tmp_path / "samples"
+    out = tmp_path / "out"
+    samples.mkdir()
+    _make_pdf(samples / "rc_sparse.pdf", [
+        "RATE CONFIRMATION",
+        "Confirmation Number: RC-1",
+        "Linehaul Rate: $500.00",
+    ])
+
+    new_rows, _ = run(samples, out)
+    row = new_rows[0]
+    assert row["document_type"] == "rate_confirmation"
+    assert row["review_status"] == "needs_review"
+    assert "pickup_location" in row["missing_fields"].split(";")
+    assert "equipment_type" in row["missing_fields"].split(";")
+
+
 def test_pod_clean_delivery_is_ok(tmp_path):
     samples = tmp_path / "samples"
     out = tmp_path / "out"

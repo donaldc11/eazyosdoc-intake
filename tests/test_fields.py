@@ -127,6 +127,57 @@ def test_bol_purchase_order_alias():
     assert fx.extract_po_number(text) == "PO-99871"
 
 
+def test_rate_confirmation_fields_full():
+    text = (
+        "RATE CONFIRMATION\n"
+        "Confirmation Number: RC-88213\n"
+        "Load #: LD-55210\n"
+        "Shipper: Sunrise Produce Co, Fresno CA\n"
+        "Pickup Location: Fresno, CA\n"
+        "Pickup Date: 10/02/2026\n"
+        "Delivery Location: Dallas, TX\n"
+        "Delivery Date: 10/04/2026\n"
+        "Equipment Type: 53' Dry Van\n"
+        "Linehaul Rate: $2,450.00\n"
+        "Fuel Surcharge: $180.00\n"
+        "Detention: $75.00\n"
+    )
+    # "Confirmation Number" appears before "Load #" in this layout, so it's
+    # the reference number captured (first labeled match wins).
+    assert fx.extract_load_reference(text) == "RC-88213"
+    assert fx.extract_shipper(text) == "Sunrise Produce Co, Fresno CA"
+    assert fx.extract_pickup_location(text) == "Fresno, CA"
+    assert fx.extract_delivery_location(text) == "Dallas, TX"
+    assert fx.extract_equipment_type(text) == "53' Dry Van"
+    amount, currency = fx.extract_amount_currency(text)
+    assert amount == "2450.00"
+    assert currency == "USD"
+    assert fx.extract_accessorial_charges(text) == "Fuel Surcharge: $180.00; Detention: $75.00"
+
+
+def test_rate_confirmation_no_load_number_falls_back_to_confirmation_number():
+    text = "RATE CONFIRMATION\nConfirmation Number: RC-90042\n"
+    assert fx.extract_load_reference(text) == "RC-90042"
+
+
+def test_rate_confirmation_no_accessorials_is_none():
+    text = (
+        "RATE CONFIRMATION\n"
+        "Confirmation Number: RC-90042\n"
+        "Pickup Location: Bakersfield, CA\n"
+        "Delivery Location: Seattle, WA\n"
+        "Equipment Type: Reefer\n"
+        "Linehaul Rate: $3,900.00\n"
+    )
+    assert fx.extract_accessorial_charges(text) is None
+
+
+def test_pickup_location_does_not_collide_with_pickup_date():
+    text = "Pickup Date: 10/02/2026\nPickup Location: Fresno, CA\n"
+    assert fx.extract_pickup_date(text) == "10/02/2026"
+    assert fx.extract_pickup_location(text) == "Fresno, CA"
+
+
 def test_pod_fields_clean_delivery():
     text = (
         "PROOF OF DELIVERY\n"

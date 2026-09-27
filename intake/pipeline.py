@@ -14,7 +14,12 @@ from . import classify, extract, naics
 from . import fields as fx
 
 EXPECTED_FIELDS = {
-    "rate_confirmation": ["load_reference_number", "shipper", "consignee", "pickup_date", "delivery_date", "amount", "currency"],
+    # accessorial_charges is deliberately excluded: a clean linehaul-only
+    # rate con has none, so its absence shouldn't force a review.
+    "rate_confirmation": [
+        "load_reference_number", "shipper", "pickup_location", "pickup_date",
+        "delivery_location", "delivery_date", "equipment_type", "amount", "currency",
+    ],
     # po_number is deliberately excluded: not every BOL references a
     # customer PO, so its absence shouldn't force a review.
     "bol": ["load_reference_number", "shipper", "consignee", "piece_count", "weight"],
@@ -40,10 +45,14 @@ CSV_FIELDNAMES = [
     "load_reference_number",
     "shipper",
     "consignee",
+    "pickup_location",
     "pickup_date",
+    "delivery_location",
     "delivery_date",
+    "equipment_type",
     "amount",
     "currency",
+    "accessorial_charges",
     "piece_count",
     "weight",
     "po_number",
@@ -85,10 +94,14 @@ def build_record(path: Path, doc_id: str) -> Tuple[dict, str]:
         "consignee": fx.extract_consignee(raw_text),
         "pickup_date": fx.extract_pickup_date(raw_text),
         "delivery_date": fx.extract_delivery_date(raw_text),
+        "pickup_location": fx.extract_pickup_location(raw_text),
+        "delivery_location": fx.extract_delivery_location(raw_text),
+        "equipment_type": fx.extract_equipment_type(raw_text),
     }
     amount, currency = fx.extract_amount_currency(raw_text)
     record_fields["amount"] = amount
     record_fields["currency"] = currency
+    record_fields["accessorial_charges"] = fx.extract_accessorial_charges(raw_text)
     record_fields["piece_count"] = fx.extract_piece_count(raw_text)
     record_fields["weight"] = fx.extract_weight(raw_text)
     record_fields["po_number"] = fx.extract_po_number(raw_text)

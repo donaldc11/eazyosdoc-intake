@@ -21,10 +21,32 @@ DOCS = {
         "Load #: LD-55210",
         "Shipper: Sunrise Produce Co, Fresno CA",
         "Consignee: Metro Grocers Distribution, Dallas TX",
+        "Pickup Location: Fresno, CA",
         "Pickup Date: 10/02/2026",
+        "Delivery Location: Dallas, TX",
         "Delivery Date: 10/04/2026",
-        "Agreed Rate: $2,450.00",
+        "Equipment Type: 53' Dry Van",
+        "Linehaul Rate: $2,450.00",
+        "Fuel Surcharge: $180.00",
+        "Detention: $75.00",
         "Dispatcher: J. Alvarez",
+    ],
+    # No fuel surcharge/accessorial lines, and no separate "Load #" — the
+    # confirmation number stands in as the reference. Exercises both the
+    # "accessorials are optional" path and the confirmation-number alias.
+    "rate_confirmation_no_accessorials_1002.pdf": [
+        "BLUE OX BROKERAGE",
+        "RATE CONFIRMATION",
+        "Confirmation Number: RC-90042",
+        "Shipper: Golden Valley Produce, Bakersfield CA",
+        "Consignee: Pacific Fresh Foods, Seattle WA",
+        "Pickup Location: Bakersfield, CA",
+        "Pickup Date: 10/10/2026",
+        "Delivery Location: Seattle, WA",
+        "Delivery Date: 10/13/2026",
+        "Equipment Type: Reefer",
+        "Linehaul Rate: $3,900.00",
+        "Dispatcher: M. Chen",
     ],
     "bol_2002.pdf": [
         "STRAIGHT BILL OF LADING",
