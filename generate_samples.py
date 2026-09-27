@@ -57,8 +57,22 @@ DOCS = {
         "POD #: POD-91827",
         "Load #: LD-55210",
         "Consignee: Metro Grocers Distribution, Dallas TX",
-        "Delivery Date: 10/04/2026",
+        "Delivered Date: 10/04/2026",
+        "Delivered Time: 2:32 PM",
+        "Piece Count: 18",
         "Received in good condition.",
+        "Signature on file.",
+    ],
+    # Exercises the exception-notes path: shortage/damage noted at delivery.
+    "pod_exception_3004.pdf": [
+        "PROOF OF DELIVERY",
+        "POD #: POD-91850",
+        "BOL #: BOL-77410",
+        "Consignee: Highline Construction, Phoenix AZ",
+        "Delivered Date: 10/02/2026",
+        "Delivered Time: 9:15 AM",
+        "Piece Count: 22",
+        "Exception: 2 pieces damaged in transit, consignee noted shortage of 1 piece.",
         "Signature on file.",
     ],
     "invoice_4004.pdf": [

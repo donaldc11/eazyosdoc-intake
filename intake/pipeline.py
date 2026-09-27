@@ -18,7 +18,10 @@ EXPECTED_FIELDS = {
     # po_number is deliberately excluded: not every BOL references a
     # customer PO, so its absence shouldn't force a review.
     "bol": ["load_reference_number", "shipper", "consignee", "piece_count", "weight"],
-    "pod": ["load_reference_number", "consignee", "delivery_date"],
+    # exception_notes is deliberately excluded: it flags a problem when
+    # present, but a clean POD has none, so its absence shouldn't force
+    # a review.
+    "pod": ["load_reference_number", "consignee", "delivered_at", "piece_count"],
     "invoice": ["load_reference_number", "amount", "currency", "shipper"],
     # naics_code is deliberately excluded: the spec calls it out as "if
     # present" rather than a required field, so its absence shouldn't force
@@ -44,6 +47,8 @@ CSV_FIELDNAMES = [
     "piece_count",
     "weight",
     "po_number",
+    "delivered_at",
+    "exception_notes",
     "issuing_agency",
     "solicitation_number",
     "due_date",
@@ -87,6 +92,8 @@ def build_record(path: Path, doc_id: str) -> Tuple[dict, str]:
     record_fields["piece_count"] = fx.extract_piece_count(raw_text)
     record_fields["weight"] = fx.extract_weight(raw_text)
     record_fields["po_number"] = fx.extract_po_number(raw_text)
+    record_fields["delivered_at"] = fx.extract_delivered_at(raw_text)
+    record_fields["exception_notes"] = fx.extract_exception_notes(raw_text)
     record_fields["issuing_agency"] = fx.extract_issuing_agency(raw_text)
     record_fields["solicitation_number"] = fx.extract_solicitation_number(raw_text)
     record_fields["due_date"] = fx.extract_due_date(raw_text)

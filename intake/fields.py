@@ -81,6 +81,39 @@ def extract_po_number(text: str) -> Optional[str]:
     return _search(r"Purchase Order\s*(?:Number|No\.?|#)?\s*[:#]\s*([A-Za-z0-9\-]{2,})", text)
 
 
+def extract_delivered_at(text: str) -> Optional[str]:
+    # Single-line "Delivered: <date> <time>" layout.
+    match = re.search(r"delivered\s*[:\-]\s*([\d/\-]{6,10})\s+([\d:]{3,8}\s*(?:am|pm)?)", text, re.IGNORECASE)
+    if match:
+        return f"{match.group(1)} {match.group(2).strip()}"
+
+    # Separate "Delivered/Delivery Date: X" plus optional "Delivered/Delivery Time: Y".
+    date_match = re.search(r"deliver(?:ed|y)\s*date\s*[:\-]\s*([\d/\-]{6,10})", text, re.IGNORECASE)
+    if not date_match:
+        return None
+    time_match = re.search(r"deliver(?:ed|y)\s*time\s*[:\-]\s*([\d:]{3,8}\s*(?:am|pm)?)", text, re.IGNORECASE)
+    if time_match:
+        return f"{date_match.group(1)} {time_match.group(1).strip()}"
+    return date_match.group(1)
+
+
+EXCEPTION_KEYWORDS = [
+    "shortage", "short count", "damage", "damaged", "refused", "refusal", "discrepancy",
+]
+
+
+def extract_exception_notes(text: str) -> Optional[str]:
+    # Returns the exact line noting the exception (never invented or
+    # summarized); None when no exception keyword appears anywhere.
+    for line in text.splitlines():
+        lowered = line.lower()
+        if any(keyword in lowered for keyword in EXCEPTION_KEYWORDS):
+            stripped = line.strip()
+            if stripped:
+                return stripped
+    return None
+
+
 def extract_issuing_agency(text: str) -> Optional[str]:
     match = re.search(r"The ([A-Z][A-Za-z0-9()&,.'\-\s]{1,80}?) invites you to submit", text)
     if match:

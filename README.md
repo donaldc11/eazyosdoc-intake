@@ -69,7 +69,8 @@ Each JSON record contains:
 | `classification_confidence` | 0–1, how dominant the winning type's keyword score was |
 | `classification_scores` | raw keyword score per candidate type, for auditing |
 | `load_reference_number`, `shipper`, `consignee`, `pickup_date`, `delivery_date`, `amount`, `currency` | freight/invoice fields — **`null` when not found, never guessed** |
-| `piece_count`, `weight`, `po_number` | BOL fields — `weight` keeps whatever unit the document states (e.g. "42,500 lbs"); `po_number` is optional (not every BOL references a customer PO) so its absence never triggers review |
+| `piece_count`, `weight`, `po_number` | BOL fields — `weight` keeps whatever unit the document states (e.g. "42,500 lbs"); `po_number` is optional (not every BOL references a customer PO) so its absence never triggers review; `piece_count` is shared with POD |
+| `delivered_at`, `exception_notes` | POD fields — `delivered_at` combines delivery date and time when both are stated (e.g. "10/04/2026 2:32 PM"), date-only otherwise; `exception_notes` is the verbatim line noting a shortage/damage/refusal, `null` on a clean delivery, and never required (its absence just means nothing was flagged) |
 | `issuing_agency`, `solicitation_number`, `due_date`, `naics_code`, `buyer_contact` | solicitation fields (RFQs/SBQs/bidder instructions) — `null` when not found; `naics_code` only fills in when the source document states one explicitly |
 | `naics_lookup_code`, `naics_lookup_confidence` | best-matching NAICS code from a static local table of codes Eazy Express bids (484xxx trucking, 492xxx couriers, 488xxx freight support, 541xxx as a stretch bucket), and its confidence (0–1); `null`/`0.0` when nothing in the table matches the document text. Distinct from `naics_code`, which only captures a code the document states outright — this is Eazy Express's own best guess, not the buyer's |
 | `missing_fields` | fields expected for this document type but not found |

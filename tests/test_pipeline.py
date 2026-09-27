@@ -153,6 +153,68 @@ def test_bol_missing_required_field_needs_review(tmp_path):
     assert "weight" in row["missing_fields"].split(";")
 
 
+def test_pod_clean_delivery_is_ok(tmp_path):
+    samples = tmp_path / "samples"
+    out = tmp_path / "out"
+    samples.mkdir()
+    _make_pdf(samples / "pod_clean.pdf", [
+        "PROOF OF DELIVERY",
+        "Load #: LD-55210",
+        "Consignee: Metro Grocers Distribution",
+        "Delivered Date: 10/04/2026",
+        "Delivered Time: 2:32 PM",
+        "Piece Count: 18",
+        "Received in good condition.",
+    ])
+
+    new_rows, _ = run(samples, out)
+    row = new_rows[0]
+    assert row["document_type"] == "pod"
+    assert row["delivered_at"] == "10/04/2026 2:32 PM"
+    assert row["piece_count"] == "18"
+    assert row["exception_notes"] in (None, "")
+    assert row["review_status"] == "ok"
+
+
+def test_pod_with_exception_notes_is_still_ok(tmp_path):
+    samples = tmp_path / "samples"
+    out = tmp_path / "out"
+    samples.mkdir()
+    _make_pdf(samples / "pod_exception.pdf", [
+        "PROOF OF DELIVERY",
+        "BOL #: BOL-77410",
+        "Consignee: Highline Construction",
+        "Delivered Date: 10/02/2026",
+        "Delivered Time: 9:15 AM",
+        "Piece Count: 22",
+        "Exception: 2 pieces damaged in transit.",
+    ])
+
+    new_rows, _ = run(samples, out)
+    row = new_rows[0]
+    assert row["document_type"] == "pod"
+    assert row["exception_notes"] == "Exception: 2 pieces damaged in transit."
+    assert "exception_notes" not in row["missing_fields"].split(";")
+    assert row["review_status"] == "ok"
+
+
+def test_pod_missing_required_field_needs_review(tmp_path):
+    samples = tmp_path / "samples"
+    out = tmp_path / "out"
+    samples.mkdir()
+    _make_pdf(samples / "pod_sparse.pdf", [
+        "PROOF OF DELIVERY",
+        "Load #: LD-1",
+    ])
+
+    new_rows, _ = run(samples, out)
+    row = new_rows[0]
+    assert row["document_type"] == "pod"
+    assert row["review_status"] == "needs_review"
+    assert "delivered_at" in row["missing_fields"].split(";")
+    assert "piece_count" in row["missing_fields"].split(";")
+
+
 def test_naics_lookup_is_tagged_on_solicitation_docs(tmp_path):
     samples = tmp_path / "samples"
     out = tmp_path / "out"

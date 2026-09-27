@@ -127,6 +127,50 @@ def test_bol_purchase_order_alias():
     assert fx.extract_po_number(text) == "PO-99871"
 
 
+def test_pod_fields_clean_delivery():
+    text = (
+        "PROOF OF DELIVERY\n"
+        "POD #: POD-91827\n"
+        "Load #: LD-55210\n"
+        "Consignee: Metro Grocers Distribution, Dallas TX\n"
+        "Delivered Date: 10/04/2026\n"
+        "Delivered Time: 2:32 PM\n"
+        "Piece Count: 18\n"
+        "Received in good condition.\n"
+    )
+    assert fx.extract_load_reference(text) == "LD-55210"
+    assert fx.extract_consignee(text) == "Metro Grocers Distribution, Dallas TX"
+    assert fx.extract_delivered_at(text) == "10/04/2026 2:32 PM"
+    assert fx.extract_piece_count(text) == "18"
+    assert fx.extract_exception_notes(text) is None
+
+
+def test_pod_fields_with_exception_note():
+    text = (
+        "PROOF OF DELIVERY\n"
+        "POD #: POD-91850\n"
+        "BOL #: BOL-77410\n"
+        "Consignee: Highline Construction, Phoenix AZ\n"
+        "Delivered Date: 10/02/2026\n"
+        "Delivered Time: 9:15 AM\n"
+        "Piece Count: 22\n"
+        "Exception: 2 pieces damaged in transit, consignee noted shortage of 1 piece.\n"
+    )
+    assert fx.extract_load_reference(text) == "BOL-77410"
+    assert fx.extract_delivered_at(text) == "10/02/2026 9:15 AM"
+    assert fx.extract_exception_notes(text) == "Exception: 2 pieces damaged in transit, consignee noted shortage of 1 piece."
+
+
+def test_pod_delivered_combined_single_line():
+    text = "Delivered: 10/06/2026 14:32\n"
+    assert fx.extract_delivered_at(text) == "10/06/2026 14:32"
+
+
+def test_pod_delivered_date_without_time():
+    text = "Delivery Date: 10/04/2026\n"
+    assert fx.extract_delivered_at(text) == "10/04/2026"
+
+
 def test_solicitation_fields_letter_style_due_date_and_contact():
     text = (
         "DEPARTMENT OF FORESTRY AND FIRE PROTECTION \n"
